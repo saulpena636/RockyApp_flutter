@@ -13,6 +13,8 @@ class AuthProvider with ChangeNotifier {
   Map<String, dynamic>? get user => _user;
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _token != null;
+  bool _isAuthAttempted = false;
+  bool get isAuthAttempted => _isAuthAttempted;
 
   void _setLoading(bool loading) {
     _isLoading = loading;
@@ -20,27 +22,42 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<bool> login(String username, String password) async {
-    _setLoading(true);
+    print("--- AUTH PROVIDER: Método login() iniciado.");
+    _setLoading(true); // Asumiendo que tienes un método para el estado de carga
+
     try {
+      print("--- AUTH PROVIDER: Llamando a la API para obtener token...");
       final response = await _userApiService.login(username, password);
+      print(
+        "--- AUTH PROVIDER: Respuesta de API recibida. Token: ${response['access_token']}",
+      );
+
       _token = response['access_token'];
 
-      // Obtener y guardar datos del usuario
+      print(
+        "--- AUTH PROVIDER: Llamando a la API para obtener datos del usuario...",
+      );
       final userData = await _userApiService.getUserByUsername(username);
       _user = userData;
+      print("--- AUTH PROVIDER: Datos del usuario recibidos: $_user");
 
-      // Guardar en SharedPreferences
+      print("--- AUTH PROVIDER: Guardando sesión en SharedPreferences...");
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', _token!);
       await prefs.setInt('userId', _user!['id']);
       await prefs.setString('userName', _user!['nombre']);
+      print("--- AUTH PROVIDER: Sesión guardada.");
 
-      notifyListeners();
+      _isLoading = false;
+      print("--- AUTH PROVIDER: Llamando a notifyListeners() por ÉXITO...");
+      notifyListeners(); // ¡LA SEÑAL CLAVE!
       return true;
     } catch (e) {
+      print("--- AUTH PROVIDER: Ocurrió un error en el proceso de login: $e");
+      _isLoading = false;
+      print("--- AUTH PROVIDER: Llamando a notifyListeners() por FALLO...");
+      notifyListeners();
       return false;
-    } finally {
-      _setLoading(false);
     }
   }
 
@@ -76,30 +93,20 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> tryAutoLogin() async {
+  Future<void> tryAutoLogin() async {
     final prefs = await SharedPreferences.getInstance();
-    // Comprueba si existe un token
     if (!prefs.containsKey('token')) {
-      return false; // No hay token, no se puede iniciar sesión
+      return; // Simplemente salimos si no hay token
     }
 
-    final storedToken = prefs.getString('token');
-    final storedUserId = prefs.getInt('userId');
-    final storedUserName = prefs.getString('userName');
-
-    // Aquí podrías añadir lógica para verificar si el token ha expirado.
-    // En una app de producción, harías una llamada a un endpoint como /profile o /verify-token
-    // para asegurarte de que el token sigue siendo válido en el backend.
-    // Por ahora, si el token existe, asumiremos que es válido.
-
-    _token = storedToken;
+    // Si hay un token, actualizamos el estado
+    _token = prefs.getString('token');
     _user = {
-      'id': storedUserId,
-      'nombre': storedUserName,
-      // Puedes añadir más datos de usuario si los guardaste
+      'id': prefs.getInt('userId'),
+      'nombre': prefs.getString('userName'),
     };
 
-    notifyListeners(); // Notifica a los listeners que el usuario está autenticado
-    return true;
+    // Y notificamos a los listeners.
+    notifyListeners();
   }
 }

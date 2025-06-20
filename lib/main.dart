@@ -45,7 +45,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ReportesProvider()),
       ],
       child: MaterialApp(
-        title: 'Finanzas App',
+        title: 'Rocky App',
         theme: ThemeData(
           primarySwatch: Colors.blue,
           visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -53,7 +53,7 @@ class MyApp extends StatelessWidget {
         ),
         debugShowCheckedModeBanner: false,
         // Define una pantalla de carga o decisión inicial
-        home: AuthWrapper(),
+        home: AuthGate(),
         routes: {
           '/login': (context) => LoginScreen(),
           '/cronograma': (context) => CronogramaScreen(),
@@ -67,35 +67,75 @@ class MyApp extends StatelessWidget {
 }
 
 // Este widget decide qué pantalla mostrar basado en el estado de autenticación
-class AuthWrapper extends StatefulWidget {
+class AuthGate extends StatefulWidget {
   @override
-  _AuthWrapperState createState() => _AuthWrapperState();
+  _AuthGateState createState() => _AuthGateState();
 }
 
-class _AuthWrapperState extends State<AuthWrapper> {
+class _AuthGateState extends State<AuthGate> {
+  late Future<void> _initFuture;
+
   @override
   void initState() {
     super.initState();
-    // Llamamos a tryAutoLogin aquí.
-    // Usamos listen: false porque solo queremos llamar al método,
-    // no necesitamos que initState se reconstruya si los datos cambian.
+    // Guardamos el Future en una variable de estado para que solo se ejecute UNA VEZ.
+    _initFuture = Provider.of<AuthProvider>(
+      context,
+      listen: false,
+    ).tryAutoLogin();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    print("--- AUTH GATE: Widget reconstruido (build).");
+    // El FutureBuilder se encarga de la carga inicial de la aplicación.
+    return FutureBuilder(
+      future: _initFuture,
+      builder: (context, snapshot) {
+        // 1. MIENTRAS SE VERIFICA EL TOKEN, MOSTRAMOS UNA PANTALLA DE CARGA
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+
+        // 2. UNA VEZ VERIFICADO, EL CONSUMER TOMA EL CONTROL TOTAL
+        // El Consumer se reconstruirá SIEMPRE que notifyListeners() sea llamado.
+        return Consumer<AuthProvider>(
+          builder: (context, authProvider, _) {
+            // Si el estado es "autenticado", muestra la pantalla principal.
+            // Esto funcionará tanto para el autologin como para el login manual.
+            if (authProvider.isAuthenticated) {
+              print("--- AUTH GATE: Decisión -> Mostrar CronogramaScreen.");
+              return CronogramaScreen();
+            }
+            // Si no, muestra la pantalla de login.
+            else {
+              print("--- AUTH GATE: Decisión -> Mostrar LoginScreen.");
+              return LoginScreen();
+            }
+          },
+        );
+      },
+    );
+  }
+}
+
+// AÑADE ESTE WIDGET DE PANTALLA DE CARGA AL FINAL DE main.dart
+class SplashScreen extends StatefulWidget {
+  @override
+  _SplashScreenState createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Llama al método para intentar el login automático una sola vez.
+    // listen: false porque esta acción no debe reconstruir este widget.
     Provider.of<AuthProvider>(context, listen: false).tryAutoLogin();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Usamos un Consumer para que este widget se reconstruya cuando
-    // el estado de autenticación cambie (después de que tryAutoLogin termine).
-    return Consumer<AuthProvider>(
-      builder: (context, auth, _) {
-        if (auth.isAuthenticated) {
-          // Si el usuario está autenticado, vamos a la pantalla principal
-          return CronogramaScreen();
-        } else {
-          // Si no, vamos a la pantalla de inicio de sesión
-          return LoginScreen();
-        }
-      },
-    );
+    return Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }

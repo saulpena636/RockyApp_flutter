@@ -13,20 +13,43 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   Future<void> _login() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final success = await authProvider.login(
-      _usernameController.text,
-      _passwordController.text,
-    );
+    // Añade un print para saber que el proceso comenzó
+    print("--- LOGIN SCREEN: Botón presionado. Intentando iniciar sesión...");
 
-    if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Fallo al iniciar sesión. Revisa tus credenciales.'),
-        ),
+    // Para que no se quede el teclado abierto
+    FocusScope.of(context).unfocus();
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    try {
+      final success = await authProvider.login(
+        _usernameController.text,
+        _passwordController.text,
       );
+
+      if (success) {
+        print("--- LOGIN SCREEN: El provider reportó ÉXITO.");
+        // No necesitamos hacer nada aquí, el AuthGate debería reaccionar.
+      } else {
+        print("--- LOGIN SCREEN: El provider reportó FALLO.");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Fallo al iniciar sesión. Revisa tus credenciales.',
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print("--- LOGIN SCREEN: Ocurrió un error inesperado: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     }
-    // No necesitas navegar aquí, el AuthWrapper lo hará automáticamente.
   }
 
   @override

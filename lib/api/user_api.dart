@@ -52,7 +52,7 @@ class UserApiService {
   // Podrías añadir la función para obtener datos del usuario aquí también
   Future<Map<String, dynamic>> getUserByUsername(String username) async {
     final response = await http.get(
-      Uri.parse('$_baseUrl/users/get_user_by_email/{Email}?email=$username'),
+      Uri.parse('$_baseUrl/users/get_user_by_email/$username'),
     );
     if (response.statusCode == 200) {
       return json.decode(response.body);
