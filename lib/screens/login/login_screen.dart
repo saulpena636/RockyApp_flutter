@@ -10,46 +10,64 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _isLoading = false;
+  // No necesitas _isLoading aquí si ya el AuthProvider lo maneja
+  // bool _isLoading = false; // Puedes eliminar esta variable
+
+  @override
+  void initState() {
+    super.initState();
+    // Añade un listener para navegar cuando el usuario se autentique
+    // Lo hacemos en un post-frame callback para evitar errores
+    // de que el widget no está montado aún.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AuthProvider>(
+        context,
+        listen: false,
+      ).addListener(_authListener);
+    });
+  }
+
+  @override
+  void dispose() {
+    // Es crucial remover el listener para evitar errores
+    Provider.of<AuthProvider>(
+      context,
+      listen: false,
+    ).removeListener(_authListener);
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _authListener() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.isAuthenticated) {
+      // Navega a la pantalla principal solo si no estás ya en ella
+      // Asegúrate de que tu ruta '/home' o la ruta principal sea correcta
+      Navigator.of(context).pushReplacementNamed('/cronograma');
+    }
+  }
 
   Future<void> _login() async {
-    // Añade un print para saber que el proceso comenzó
-    print("--- LOGIN SCREEN: Botón presionado. Intentando iniciar sesión...");
-
-    // Para que no se quede el teclado abierto
-    FocusScope.of(context).unfocus();
+    // Puedes eliminar el setState para _isLoading aquí si el Consumer
+    // del botón ya maneja el estado de carga del AuthProvider.
+    // setState(() { _isLoading = true; });
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.login(
+      _usernameController.text,
+      _passwordController.text,
+    );
 
-    try {
-      final success = await authProvider.login(
-        _usernameController.text,
-        _passwordController.text,
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Fallo al iniciar sesión. Revisa tus credenciales.'),
+        ),
       );
-
-      if (success) {
-        print("--- LOGIN SCREEN: El provider reportó ÉXITO.");
-        // No necesitamos hacer nada aquí, el AuthGate debería reaccionar.
-      } else {
-        print("--- LOGIN SCREEN: El provider reportó FALLO.");
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Fallo al iniciar sesión. Revisa tus credenciales.',
-              ),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      print("--- LOGIN SCREEN: Ocurrió un error inesperado: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
     }
+    // El listener _authListener ahora se encargará de la navegación.
+    // setState(() { _isLoading = false; }); // Puedes eliminar esta línea también
   }
 
   @override
@@ -94,24 +112,33 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 SizedBox(height: 32),
-                _isLoading
-                    ? CircularProgressIndicator()
-                    : Consumer<AuthProvider>(
-                        builder: (context, auth, child) {
-                          return auth.isLoading
-                              ? CircularProgressIndicator()
-                              : ElevatedButton(
-                                  onPressed: _login,
-                                  child: Text('Iniciar sesión'),
-                                  // ... (estilos)
-                                );
-                        },
-                      ),
+                Consumer<AuthProvider>(
+                  // Mantén el Consumer para el estado de carga del botón
+                  builder: (context, auth, child) {
+                    return auth.isLoading
+                        ? CircularProgressIndicator()
+                        : ElevatedButton(
+                            onPressed: _login,
+                            child: Text('Iniciar sesión'),
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: Size(double.infinity, 50),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              backgroundColor: Color(0xFF3498DB),
+                              foregroundColor: Colors.white,
+                            ),
+                          );
+                  },
+                ),
                 TextButton(
                   onPressed: () {
                     Navigator.pushNamed(context, '/signup');
                   },
-                  child: Text('Regístrate aquí!'),
+                  child: Text(
+                    'Regístrate aquí!',
+                    style: TextStyle(color: Color(0xFF3498DB)),
+                  ),
                 ),
               ],
             ),
