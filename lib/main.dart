@@ -10,13 +10,12 @@ import '/providers/cronograma_provider.dart'; // Asegúrate de usar el nombre de
 import 'providers/resumen_provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'providers/reportes_provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Requerido para la siguiente línea
-  await initializeDateFormatting(
-    'es_ES',
-    null,
-  ); // Inicializa localización para español
+  await dotenv.load(fileName: ".env"); // Carga las variables
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('es_ES', null);
   runApp(MyApp());
 }
 

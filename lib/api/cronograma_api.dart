@@ -2,12 +2,10 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/movimiento.dart';
 import '../models/categoria.dart';
-import 'dart:io' show Platform;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class CronogramaApiService {
-  final String _baseUrl = Platform.isAndroid
-      ? "http://10.0.2.2:8000"
-      : "http://localhost:8000";
+  final String _baseUrl = dotenv.env['API_BASE_URL']!;
 
   Future<List<Movimiento>> obtenerTodos(int usuarioId) async {
     final response = await http.get(

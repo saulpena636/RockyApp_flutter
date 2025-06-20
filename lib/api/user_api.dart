@@ -1,8 +1,9 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class UserApiService {
-  final String _baseUrl = "http://localhost:8000";
+  final String _baseUrl = dotenv.env['API_BASE_URL']!;
 
   Future<Map<String, dynamic>> login(String username, String password) async {
     final response = await http.post(
